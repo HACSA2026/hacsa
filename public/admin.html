@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HACSA Admin</title>
+<style>body{font:15px sans-serif;margin:auto;padding:12px;max-width:900px}input,select,textarea,button{padding:9px;margin:3px 0;font:inherit;width:100%}button{background:#9b1c2e;color:#fff;border:0;border-radius:5px;cursor:pointer}table{width:100%;border-collapse:collapse;font-size:13px}td,th{border-bottom:1px solid #ddd;padding:4px;text-align:left}.s{overflow-x:auto}</style></head><body>
+<h2>HACSA Admin</h2><div id=app></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script><script src="config.js"></script>
+<script>
+const sb=supabase.createClient(CFG.url,CFG.anon),$=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let P=[];
+async function start(){const {data:{session}}=await sb.auth.getSession();if(!session)return login();const {data:ok}=await sb.rpc('is_admin');if(!ok){await sb.auth.signOut();return login('Not an administrator.')}panel()}
+function login(m=''){$('#app').innerHTML=`<p>${m}</p><input id=e type=email placeholder=Email><input id=p type=password placeholder=Password><button onclick="go()">Sign in</button>`}
+async function go(){const {error}=await sb.auth.signInWithPassword({email:$('#e').value,password:$('#p').value});error?login(error.message):start()}
+async function panel(){const [c,n,s]=await Promise.all([sb.from('categories').select('*').order('sort'),sb.from('nominees').select('*').order('created_at',{ascending:false}),sb.from('settings').select('*')]);
+const open=s.data.find(x=>x.key=='voting_open').value=='true';const {data:bs}=await sb.rpc('admin_batch_stats');
+$('#app').innerHTML=`<button onclick="sb.auth.signOut().then(start)">Sign out</button>
+<h3>Voting is ${open?'OPEN':'CLOSED'}</h3><button onclick="tog(${!open})">${open?'Close':'Reopen'} voting</button>
+<h3>Add nominee</h3><select id=c>${c.data.map(x=>`<option value=${x.id}>${esc(x.name)}</option>`).join('')}</select><input id=n placeholder="Full name"><textarea id=b placeholder="Short biography"></textarea><input id=f type=file accept="image/*"><button onclick="addN()">Save nominee</button><p id=m></p>
+<h3>Add category</h3><input id=cn placeholder="Category name"><button onclick="addC()">Add category</button>
+<h3>Nominees</h3><div class=s><table>${n.data.map(x=>`<tr><td>${esc(x.full_name)}${x.is_demo?' (DEMO)':''}<td>${x.active?'active':'hidden'}<td><button onclick="ed('${x.id}')">Edit</button><td><button onclick="act('${x.id}',${!x.active})">${x.active?'Hide':'Show'}</button><td><button onclick="del('${x.id}')">Delete</button></tr>`).join('')}</table></div>
+<h3>Vote codes</h3><input id=bn placeholder="Batch name e.g. Kabala agent 1"><input id=ba placeholder="Agent name"><input id=bv type=number placeholder="Votes per code (e.g. 10). Price = votes x SLE 5"><input id=bq type=number placeholder="How many codes (max 2000)"><label><input id=bx type=checkbox style="width:auto"> Active now (tick only if already paid for)</label><button onclick="gen()">Generate codes</button><p id=gm></p><div id=gd style="display:none"><textarea id=gc rows=6></textarea><button onclick="dl()">Download codes (.txt)</button></div>
+<div class=s><table><tr><th>Batch<th>Agent<th>Size<th>Votes cast<th>Status<th></tr>${(bs||[]).map(b=>`<tr><td>${esc(b.name)}<td>${esc(b.agent)}<td>${b.qty} x ${b.votes_per_code} votes @ SLE ${b.price_sle}<td>${b.used} / ${b.qty*b.votes_per_code}<td>${b.active?'ACTIVE':'inactive'}<td><button onclick="actB('${b.id}',${!b.active})">${b.active?'Deactivate':'Activate'}</button></tr>`).join('')}</table></div>
+<button onclick="editBuy()">Edit "how to buy" text shown to voters</button>
+<h3>Online payments (not used)</h3><input placeholder="Search phone or reference" oninput="pl(this.value)"><button onclick="csv()">Export CSV</button><div class=s id=pt></div>`;
+const {data}=await sb.from('payments').select('*').order('created_at',{ascending:false}).limit(1000);P=data||[];pl('')}
+function pl(q){q=q.toLowerCase();$('#pt').innerHTML='<table><tr><th>Date<th>Phone<th>SLE<th>Status<th>Ref<th></tr>'+P.filter(p=>(p.phone+(p.provider_ref||'')+p.id).toLowerCase().includes(q)).slice(0,200).map(p=>`<tr><td>${p.created_at.slice(0,16)}<td>${p.phone}<td>${p.amount_sle}<td>${p.status}${p.is_test?' (TEST)':''}<td>${esc(p.provider_ref)}<td>${p.is_test&&p.status=='pending'?`<button onclick="tc('${p.id}')">Test-confirm</button>`:''}</tr>`).join('')+'</table>'}
+async function tc(id){const {data:{session}}=await sb.auth.getSession();await fetch('/api/test-confirm',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({payment_id:id})});panel()}
+const tog=async v=>{await sb.from('settings').update({value:String(v)}).eq('key','voting_open');panel()};
+const act=async(id,v)=>{await sb.from('nominees').update({active:v}).eq('id',id);panel()};
+const del=async id=>{if(confirm('Delete nominee? If they have votes, hide instead.')){const {error}=await sb.from('nominees').delete().eq('id',id);if(error)alert('Has votes. Hide instead.');panel()}};
+async function ed(id){const {data:x}=await sb.from('nominees').select('*').eq('id',id).single();const n=prompt('Name',x.full_name);if(n===null)return;const b=prompt('Biography',x.bio||'');await sb.from('nominees').update({full_name:n,bio:b}).eq('id',id);panel()}
+async function addC(){await sb.from('categories').insert({name:$('#cn').value,sort:99});panel()}
+async function addN(){const m=$('#m');m.textContent='Saving…';let url=null;const f=$('#f').files[0];
+if(f){const path=crypto.randomUUID()+'.'+f.name.split('.').pop();const {error}=await sb.storage.from('nominees').upload(path,f);if(error){m.textContent=error.message;return}url=sb.storage.from('nominees').getPublicUrl(path).data.publicUrl}
+const {error}=await sb.from('nominees').insert({category_id:+$('#c').value,full_name:$('#n').value,bio:$('#b').value,photo_url:url});error?m.textContent=error.message:panel()}
+function csv(){const r=[['date','phone','amount_sle','status','test','ref']].concat(P.map(p=>[p.created_at,p.phone,p.amount_sle,p.status,p.is_test,p.provider_ref]));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([r.map(x=>x.join(',')).join('\n')]));a.download='payments.csv';a.click()}
+async function gen(){const m=$('#gm');m.textContent='Generating…';const {data,error}=await sb.rpc('admin_generate_codes',{p_name:$('#bn').value,p_agent:$('#ba').value,p_votes:+$('#bv').value,p_price:(+$('#bv').value)*5,p_qty:+$('#bq').value,p_active:$('#bx').checked});
+if(error){m.textContent=error.message;return}
+$('#gc').value=data.join('\n');$('#gd').style.display='block';m.textContent=data.length+' codes made. COPY or DOWNLOAD NOW: they cannot be shown again.'}
+function dl(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('#gc').value]));a.download='codes-'+Date.now()+'.txt';a.click()}
+async function actB(id,v){await sb.from('code_batches').update({active:v}).eq('id',id);panel()}
+async function editBuy(){const {data}=await sb.from('settings').select('value').eq('key','buy_info').single();const v=prompt('Text shown on the Vote page',data.value);if(v===null)return;await sb.from('settings').update({value:v}).eq('key','buy_info');alert('Saved')}
+start();
+</script></body></html>

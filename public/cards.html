@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HACSA code cards</title>
+<style>
+body{font:15px sans-serif;margin:0;padding:12px}
+.ctl input,.ctl textarea,.ctl button{width:100%;padding:9px;margin:4px 0;font:inherit}
+.ctl button{background:#9b1c2e;color:#fff;border:0;border-radius:5px}
+.sheet{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,1fr);gap:4mm;width:194mm;height:281mm;margin:10px auto;page-break-after:always;break-after:page}
+.card{border:2px solid #0b1f4b;border-radius:3mm;overflow:hidden;display:flex;flex-direction:column;text-align:center;font-family:Georgia,serif;background:#fff}
+.top{background:linear-gradient(135deg,#0b1f4b,#9b1c2e);color:#fff;padding:2mm}
+.top b{letter-spacing:2px;font-size:15px}.top small{display:block;color:#c9a227;font-style:italic}
+.val{background:#c9a227;font:700 14px sans-serif;padding:1.5mm}
+.code{font:700 22px monospace;letter-spacing:2px;margin:auto;color:#0b1f4b}
+.how{font:11px sans-serif;padding:0 3mm 2mm;color:#333}
+@page{size:A4;margin:8mm}
+@media print{.ctl{display:none}body{padding:0}.sheet{margin:0}}
+</style></head><body>
+<div class="ctl"><h2>HACSA code cards</h2>
+<textarea id=c rows=6 placeholder="Paste codes here, one per line"></textarea>
+<input id=v type=number value=10 placeholder="Votes per code">
+<input id=u placeholder="Website address">
+<button onclick="mk()">Make cards</button><button onclick="print()">Print / Save as PDF</button><p id=m></p></div>
+<div id=out></div>
+<script>
+document.getElementById('u').value=location.origin;
+function mk(){const L=(document.getElementById('c').value.toUpperCase().match(/[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/g)||[]);
+const v=+document.getElementById('v').value||0,u=document.getElementById('u').value.replace(/^https?:\/\//,'');
+document.getElementById('m').textContent=L.length+' cards';
+let h='';
+for(let i=0;i<L.length;i+=8){h+='<div class=sheet>'+L.slice(i,i+8).map(c=>`<div class=card><div class=top><b>HACSA AWARDS 2026</b><small>Your Vote. Their Impact.</small></div><div class=val>${v} VOTES · SLE ${v*5}</div><div class=code>${c}</div><div class=how>Go to <b>${u}</b>, choose your nominees and enter this code. One code can be used more than once until its votes run out.</div></div>`).join('')+'</div>'}
+document.getElementById('out').innerHTML=h}
+</script></body></html>

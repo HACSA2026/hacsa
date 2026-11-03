@@ -4,8 +4,10 @@ header{background:var(--n);color:#fff;padding:10px 14px;position:sticky;top:0;z-
 nav{display:flex;gap:4px;overflow-x:auto;margin-top:6px}nav a{color:#fff;text-decoration:none;padding:6px 10px;border-radius:4px;font:14px sans-serif;white-space:nowrap}nav a.on{background:var(--r)}
 main{max-width:900px;margin:auto;padding:14px}.hero{background:linear-gradient(135deg,var(--n),var(--r));color:#fff;padding:28px 18px;border-radius:12px;text-align:center}.hero h1{margin:0;font-size:1.8em}
 .btn{background:var(--r);color:#fff;border:0;padding:12px 18px;border-radius:6px;font:600 16px sans-serif;cursor:pointer;display:inline-block;text-decoration:none}.btn.g{background:var(--g);color:#000}.btn:disabled{opacity:.5}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.card{background:#fff;border:1px solid #e4dfd3;border-radius:10px;padding:10px;font:14px sans-serif;color:inherit;text-decoration:none}.card img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#ddd}
-input,select{width:100%;padding:10px;font:16px sans-serif;border:1px solid #bbb;border-radius:6px;margin:4px 0}.bar{height:8px;background:var(--g);border-radius:4px}.note{background:#fff3cd;padding:8px;border-radius:6px;font:14px sans-serif}.err{color:var(--r)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.card{background:#fff;border:1px solid #e4dfd3;border-radius:10px;padding:10px;font:14px sans-serif;color:inherit;text-decoration:none}.card img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#ddd}.card .btn{width:100%}
+input,select{width:100%;padding:10px;font:16px sans-serif;border:1px solid #bbb;border-radius:6px;margin:4px 0}.grid h3{grid-column:1/-1;margin:10px 0 0}.bar{height:8px;background:var(--g);border-radius:4px}.note{background:#fff3cd;padding:8px;border-radius:6px;font:14px sans-serif}.err{color:var(--r)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;text-align:center}.steps div div{font-size:28px}
+.row{display:flex;gap:10px;align-items:center;margin:6px 0;font:14px sans-serif}.row img{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#ddd;flex:none}.rt{flex:1}.rt span{float:right;font-weight:700;color:var(--r)}
 </style></head><body><header><b>HACSA</b> AWARDS 2026<nav id="nav"></nav></header><main id="v">Loading…</main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script><script src="config.js"></script>
 <script>
@@ -13,38 +15,48 @@ const sb=supabase.createClient(CFG.url,CFG.anon),$=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let cats=[],noms=[],S={},cart={},q='',cf='',timer;
 const fmt=n=>'SLE '+n.toFixed(2)+' (SLL '+(n*1000).toLocaleString()+')';
-const cnt=()=>Object.values(cart).reduce((a,b)=>a+b,0);
+const gc=()=>{try{return localStorage.getItem('hcode')||''}catch(e){return ''}};
+const sc=c=>{try{localStorage.setItem('hcode',c)}catch(e){}};
 async function init(){try{const [a,b,c]=await Promise.all([sb.from('categories').select('*').order('sort'),sb.from('nominees').select('*'),sb.from('settings').select('*')]);cats=a.data||[];noms=b.data||[];(c.data||[]).forEach(r=>S[r.key]=r.value)}catch(e){$('#v').innerHTML='<p class=err>Could not load. Check your connection and refresh.</p>';return}route()}
-function route(){clearInterval(timer);const p=(location.hash||'#/').slice(2)||'home';
+function route(){clearInterval(timer);const [p,qs]=((location.hash||'#/').slice(2)||'home').split('?');
 $('#nav').innerHTML=[['home','Home'],['categories','Categories'],['nominees','Nominees'],['checkout','Cart ('+tv()+')'],['results','Results'],['about','About']].map(([k,t])=>`<a href="#/${k}" class="${k==p?'on':''}">${t}</a>`).join('');
-({home,categories:cs,nominees:ns,checkout:co,results:rs,about:ab}[p]||home)()}
+({home,categories:cs,nominees:ns,checkout:co,results:rs,about:ab,go}[p]||home)(new URLSearchParams(qs||''))}
 addEventListener('hashchange',route);
 function home(){const n=Math.max(0,Math.ceil((new Date('2026-12-29T18:00:00Z')-Date.now())/864e5));
-$('#v').innerHTML=`<div class=hero><h1>Humanitarian &amp; Community Service Awards 2026</h1><p><i>Your Vote. Their Impact.</i></p><p>Awards Night: 29 Dec 2026 · Seria City Plaza<br>Voting closes: 26 Dec 2026<br><b>${n} days to go</b></p>${S.voting_open=='true'?'<a class="btn g" href="#/nominees">Start Voting</a>':'<p><b>Voting is closed</b></p>'}</div><h3>Featured categories</h3><div class=grid>${cats.slice(0,6).map(c=>`<a class=card href="#/nominees" onclick="cf=${c.id}">${esc(c.name)}</a>`).join('')}</div><p>Each vote costs ${fmt(5)}.</p>`}
+$('#v').innerHTML=`<div class=hero><h1>Humanitarian &amp; Community Service Awards 2026</h1><p><i>Your Vote. Their Impact.</i></p><p>Awards Night: 29 Dec 2026 · Seria City Plaza<br>Voting closes: 26 Dec 2026<br><b>${n} days to go</b></p><p id=tv></p>${S.voting_open=='true'?'<a class="btn g" href="#/nominees">Start Voting</a>':'<p><b>Voting is closed</b></p>'}</div>
+<h3>How to vote</h3><div class=steps><div class=card><div>🎫</div><b>1. Get a code</b><br>Buy a vote card from an official HACSA agent.</div><div class=card><div>🏆</div><b>2. Choose</b><br>Tap Vote next to your favourite people.</div><div class=card><div>✅</div><b>3. Cast</b><br>Enter your code and tap Cast votes.</div></div>
+<h3>Featured categories</h3><div class=grid>${cats.slice(0,6).map(c=>`<a class=card href="#/nominees" onclick="cf=${c.id}">${esc(c.name)}</a>`).join('')}</div><p>Each vote costs ${fmt(5)}.</p>
+<a class="btn g" target=_blank rel=noopener href="https://wa.me/?text=${encodeURIComponent('Vote for your favourite at HACSA Awards 2026: '+location.origin)}">Share on WhatsApp</a>`;
+sb.from('public_results').select('votes').then(({data})=>{const t=(data||[]).reduce((a,r)=>a+r.votes,0),e=$('#tv');if(e)e.innerHTML='🗳 <b>'+t.toLocaleString()+'</b> votes cast so far'})}
+async function go(p){const c=(p.get('c')||'').trim();if(c)sc(c);
+$('#v').innerHTML=`<div class=hero><h1>Welcome to HACSA Awards</h1><p id=gm>Checking your code…</p><a class="btn g" href="#/nominees">Choose nominees</a></div>`;
+if(!c){$('#gm').textContent='Choose your favourite nominees and vote.';return}
+try{const r=await fetch('/api/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c})});const j=await r.json();$('#gm').innerHTML=r.ok?`✅ Your code is ready: <b>${j.balance}</b> vote(s) available.`:`⚠ ${esc(j.error)}`}catch(e){$('#gm').textContent='Could not check the code. You can still continue.'}}
 function cs(){$('#v').innerHTML=`<input placeholder="Search categories" oninput="q=this.value;cl()"><div class=grid id=cl></div>`;cl()}
 function cl(){$('#cl').innerHTML=cats.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())).map(c=>`<a class=card href="#/nominees" onclick="cf=${c.id}">${esc(c.name)}<br><small>${noms.filter(n=>n.category_id==c.id).length} nominees</small></a>`).join('')}
 function ns(){q='';$('#v').innerHTML=`<input placeholder="Search nominees" oninput="q=this.value;nl()"><select onchange="cf=this.value;nl()"><option value="">All categories</option>${cats.map(c=>`<option value=${c.id} ${c.id==cf?'selected':''}>${esc(c.name)}</option>`).join('')}</select><div class=grid id=nl></div>`;nl()}
 function nl(){const L=noms.filter(n=>(!cf||n.category_id==cf)&&n.full_name.toLowerCase().includes(q.toLowerCase()));
-$('#nl').innerHTML=L.map(n=>`<div class=card>${n.photo_url?`<img loading=lazy src="${esc(n.photo_url)}" alt="">`:'<img alt="">'}<b>${esc(n.full_name)}</b>${n.is_demo?' <small>(DEMO)</small>':''}<br><small>${esc((cats.find(c=>c.id==n.category_id)||{}).name)}</small><p>${esc(n.bio)}</p><button class=btn onclick="add('${n.id}')" ${S.voting_open!='true'?'disabled':''}>Vote</button></div>`).join('')||'<p>No nominees yet.</p>'}
+const cd=n=>`<div class=card>${n.photo_url?`<img loading=lazy src="${esc(n.photo_url)}" alt="">`:'<img alt="">'}<b>${esc(n.full_name)}</b>${n.is_demo?' <small>(DEMO)</small>':''}<br><small>${esc((cats.find(c=>c.id==n.category_id)||{}).name)}</small><p>${esc(n.bio)}</p><button class=btn onclick="add('${n.id}',this)" ${S.voting_open!='true'?'disabled':''}>${cart[n.id]?'Added ('+cart[n.id]+')':'Vote'}</button></div>`;
+$('#nl').innerHTML=(cf?L.map(cd).join(''):cats.map(c=>{const g=L.filter(n=>n.category_id==c.id);return g.length?`<h3>${esc(c.name)}</h3>`+g.map(cd).join(''):''}).join(''))||'<p>No nominees found.</p>'}
 try{cart=JSON.parse(localStorage.getItem('hc')||'{}')}catch(e){}
 const save=()=>{try{localStorage.setItem('hc',JSON.stringify(cart))}catch(e){}};
 const tv=()=>Object.values(cart).reduce((a,b)=>a+b,0);
-function add(id){cart[id]=(cart[id]||0)+1;save();location.hash='#/checkout'}
+function add(id,b){cart[id]=(cart[id]||0)+1;save();b.textContent='Added ('+cart[id]+')';const a=document.querySelector('#nav a[href="#/checkout"]');if(a)a.textContent='Cart ('+tv()+')'}
 function co(){const ids=Object.keys(cart).filter(id=>noms.find(x=>x.id==id));
 if(!ids.length){$('#v').innerHTML='<p>Your cart is empty. <a href="#/nominees">Choose nominees</a>. You can vote in several categories.</p><div class=note>'+esc(S.buy_info)+'</div>';return}
 const t=tv();
 $('#v').innerHTML=`<h2>Your votes</h2>${ids.map(id=>{const n=noms.find(x=>x.id==id);return `<div class=card><b>${esc(n.full_name)}</b><br><small>${esc((cats.find(c=>c.id==n.category_id)||{}).name)}</small><input type=number min=1 max=100000 value=${cart[id]} onchange="cart['${id}']=Math.max(1,Math.min(100000,Math.floor(+this.value)||1));save();route()"><button onclick="delete cart['${id}'];save();route()">Remove</button></div>`}).join('')}
 <p><a href="#/nominees">+ Add another nominee</a></p><h3>${t} vote${t>1?'s':''} = SLE ${(t*5).toFixed(2)} (SLL ${(t*5000).toLocaleString()})</h3>
 <div class=note>${esc(S.buy_info)}<br>You need a code worth at least <b>${t}</b> vote${t>1?'s':''}.</div>
-<label>Your vote code<input id=cd placeholder="XXXX-XXXX-XXXX" autocapitalize=characters autocomplete=off></label><button class=btn id=pb onclick="redeem()">Cast ${t} vote${t>1?'s':''}</button> <button onclick="bal()">Check code balance</button><p id=st></p>`}
+<label>Your vote code<input id=cd value="${esc(gc())}" placeholder="XXXX-XXXX-XXXX" autocapitalize=characters autocomplete=off></label><button class=btn id=pb onclick="redeem()">Cast ${t} vote${t>1?'s':''}</button> <button onclick="bal()">Check code balance</button><p id=st></p>`}
 async function bal(){const st=$('#st');st.textContent='Checking…';try{const r=await fetch('/api/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:$('#cd').value})});const j=await r.json();if(!r.ok)throw new Error(j.error);st.innerHTML=`This code has <b>${j.balance}</b> vote(s) left.`}catch(e){st.innerHTML=`<span class=err>${esc(e.message)}</span>`}}
-async function redeem(){const b=$('#pb'),st=$('#st');b.disabled=true;st.textContent='Casting votes…';
-try{const r=await fetch('/api/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:$('#cd').value,items:Object.entries(cart).map(([nominee_id,votes])=>({nominee_id,votes}))})});const j=await r.json();
+async function redeem(){const b=$('#pb'),st=$('#st'),code=$('#cd').value;b.disabled=true;st.textContent='Casting votes…';
+try{const r=await fetch('/api/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,items:Object.entries(cart).map(([nominee_id,votes])=>({nominee_id,votes}))})});const j=await r.json();
 if(!r.ok)throw new Error(j.error||'Failed');
-cart={};save();$('#v').innerHTML=`<h2>Thank you!</h2><p><b>${j.votes} vote(s) cast.</b> Your code has <b>${j.left}</b> vote(s) left. You can use it again.</p><a class="btn g" href="#/results">See results</a> <a class=btn href="#/nominees">Vote more</a>`}
+cart={};save();sc(j.left>0?code:'');$('#v').innerHTML=`<h2>Thank you! 🎉</h2><p><b>${j.votes} vote(s) cast.</b> Your code has <b>${j.left}</b> vote(s) left.</p><a class="btn g" href="#/results">See results</a> <a class=btn href="#/nominees">Vote for someone else</a>`}
 catch(e){st.innerHTML=`<span class=err>${esc(e.message)}</span>`;b.disabled=false}}
-function rs(){$('#v').innerHTML=`<h2>Results <small>(${esc(S.results_label)})</small></h2><p>Verified votes only.</p><div id=rl></div>`;const f=async()=>{const {data}=await sb.from('public_results').select('*');
-$('#rl').innerHTML=cats.map(c=>{const L=(data||[]).filter(r=>r.category_id==c.id).sort((a,b)=>b.votes-a.votes),m=Math.max(1,...L.map(y=>y.votes));return L.length?`<h3>${esc(c.name)}</h3>`+L.map(r=>`<div>${esc(r.full_name)}: <b>${r.votes}</b><div class=bar style="width:${r.votes/m*100}%"></div></div>`).join(''):''}).join('')||'<p>No nominees yet.</p>'};f();timer=setInterval(f,15000)}
+function rs(){$('#v').innerHTML=`<h2>Results <small>(${esc(S.results_label)})</small></h2><p>Only verified votes are counted. This page updates automatically.</p><div id=rl></div>`;const f=async()=>{const {data}=await sb.from('public_results').select('*');
+$('#rl').innerHTML=cats.map(c=>{const L=(data||[]).filter(r=>r.category_id==c.id).sort((a,b)=>b.votes-a.votes),m=Math.max(1,...L.map(y=>y.votes));return L.length?`<h3>${esc(c.name)}</h3>`+L.map((r,i)=>`<div class=row>${r.photo_url?`<img src="${esc(r.photo_url)}" alt="">`:'<img alt="">'}<div class=rt><b>${r.votes>0&&i<3?['🥇','🥈','🥉'][i]:(i+1)+'.'} ${esc(r.full_name)}</b><span>${r.votes.toLocaleString()}</span><div class=bar style="width:${r.votes/m*100}%"></div></div></div>`).join(''):''}).join('')||'<p>No nominees yet.</p>'};f();timer=setInterval(f,15000)}
 function ab(){$('#v').innerHTML=`<h2>About HACSA</h2><p>The Humanitarian &amp; Community Service Awards honour people and organisations serving their communities. Awards Night: 29 December 2026, Seria City Plaza.</p><p>Contact: [phone/email to be added by organiser]</p>`}
 init();
 </script></body></html>
